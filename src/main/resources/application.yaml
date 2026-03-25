@@ -3,7 +3,7 @@ server:
 
 spring:
   config:
-    import: optional:file:.env[.properties]
+    import: optional:file:.env[.properties], optional:classpath:application-kafka.yml
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
@@ -31,3 +31,7 @@ springdoc:
   show-actuator: false
   packages-to-scan: com.module4.controller
 
+logging:
+  level:
+    org.apache.kafka: DEBUG
+    org.springframework.kafka: DEBUG
