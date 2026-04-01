@@ -4,10 +4,12 @@ import com.module4.dto.UserCreateDTO;
 import com.module4.dto.UserPatchDTO;
 import com.module4.dto.UserResponseDTO;
 import com.module4.dto.UserUpdateDTO;
+import com.module4.dto.event.UserEvent;
 import com.module4.entity.User;
 import com.module4.exception.BusinessException;
 import com.module4.exception.ResourceNotFoundException;
 import com.module4.mapper.UserMapper;
+import com.module4.messaging.UserEventProducer;
 import com.module4.repository.UserRepository;
 import com.module4.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final UserEventProducer userEventProducer;
 
     /**
      * Retrieves a user by their unique identifier.
@@ -57,6 +60,8 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.toEntity(createDTO);
         User savedUser = userRepository.save(user);
 
+        sendUserEvent(savedUser, UserEvent.OperationType.CREATED);
+
         log.info("User created successfully with id: {}", savedUser.getId());
         return userMapper.toResponseDTO(savedUser);
     }
@@ -64,7 +69,7 @@ public class UserServiceImpl implements UserService {
     /**
      * Updates existing user information.
      *
-     * @param id User entity id.
+     * @param id        User entity id.
      * @param updateDTO User's field for update.
      */
     @Override
@@ -90,7 +95,7 @@ public class UserServiceImpl implements UserService {
     /**
      * Partial user update.
      *
-     * @param id User entity id.
+     * @param id       User entity id.
      * @param patchDTO User's field for update.
      */
     @Override
@@ -124,14 +129,21 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
         log.debug("Deleting user with id: {}", id);
 
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User", "id", id);
-        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
 
         userRepository.deleteById(id);
+        sendUserEvent(user, UserEvent.OperationType.DELETED);
         log.info("User deleted successfully with id: {}", id);
     }
 
+    private void sendUserEvent(User user, UserEvent.OperationType operationType) {
+        UserEvent event = UserEvent.builder()
+                .email(user.getEmail())
+                .operationType(operationType)
+                .build();
+        userEventProducer.sendUserEvent(event);
+    }
 
     private User findUserById(Long id) {
         return userRepository.findById(id)
