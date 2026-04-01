@@ -1,5 +1,6 @@
 package com.module4.controller;
 
+import com.module4.assembler.UserModelAssembler;
 import com.module4.dto.UserCreateDTO;
 import com.module4.dto.UserPatchDTO;
 import com.module4.dto.UserResponseDTO;
@@ -14,10 +15,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Slf4j
 @RestController
@@ -26,6 +31,7 @@ import java.net.URI;
 public class UserController {
 
     private final UserService userService;
+    private final UserModelAssembler userModelAssembler;
 
     @GetMapping("/{id}")
     @Operation(
@@ -38,10 +44,13 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+    public ResponseEntity<EntityModel<UserResponseDTO>> getUserById(@PathVariable Long id) {
         log.info("REST request to get user by id: {}", id);
         UserResponseDTO user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
+
+        EntityModel<UserResponseDTO> userModel = userModelAssembler.toModel(user);
+
+        return ResponseEntity.ok(userModel);
     }
 
     @PostMapping
@@ -87,16 +96,18 @@ public class UserController {
                     )
             )
     })
-    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserCreateDTO createDTO) {
+    public ResponseEntity<EntityModel<UserResponseDTO>> createUser(@Valid @RequestBody UserCreateDTO createDTO) {
         log.info("REST request to create user with email: {}", createDTO.getEmail());
 
         UserResponseDTO createdUser = userService.createUser(createDTO);
+
+        EntityModel<UserResponseDTO> userModel = userModelAssembler.toModelWithCreateLink(createdUser);
 
         URI location = URI.create("/api/users/" + createdUser.getId());
 
         return ResponseEntity
                 .created(location)
-                .body(createdUser);
+                .body(userModel);
     }
 
     @PutMapping("/{id}")
@@ -110,14 +121,16 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "409", description = "Email already exists")
     })
-    public ResponseEntity<UserResponseDTO> updateUser(
+    public ResponseEntity<EntityModel<UserResponseDTO>> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDTO updateDTO) {
 
         log.info("REST request to update user with id: {}", id);
 
         UserResponseDTO updatedUser = userService.updateUser(id, updateDTO);
-        return ResponseEntity.ok(updatedUser);
+        EntityModel<UserResponseDTO> userModel = userModelAssembler.toModel(updatedUser);
+
+        return ResponseEntity.ok(userModel);
     }
 
 
@@ -132,14 +145,16 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "409", description = "Email already exists")
     })
-    public ResponseEntity<UserResponseDTO> patchUser(
+    public ResponseEntity<EntityModel<UserResponseDTO>> patchUser(
             @PathVariable Long id,
             @Valid @RequestBody UserPatchDTO patchDTO) {
 
         log.info("REST request to patch user with id: {}", id);
 
         UserResponseDTO patchedUser = userService.patchUser(id, patchDTO);
-        return ResponseEntity.ok(patchedUser);
+        EntityModel<UserResponseDTO> userModel = userModelAssembler.toModel(patchedUser);
+
+        return ResponseEntity.ok(userModel);
     }
 
     @DeleteMapping("/{id}")
@@ -155,6 +170,6 @@ public class UserController {
         log.info("REST request to delete user with id: {}", id);
 
         userService.deleteUser(id);
-        return ResponseEntity.noContent().build();  // status 204 No Content
+        return ResponseEntity.noContent().build();
     }
 }
