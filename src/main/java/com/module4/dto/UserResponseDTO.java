@@ -1,10 +1,13 @@
 package com.module4.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.hateoas.RepresentationModel;
+import org.springframework.hateoas.server.core.Relation;
 
 import java.time.LocalDateTime;
 
@@ -12,8 +15,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "DTO with user data for response")
-public class UserResponseDTO {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@Relation(collectionRelation = "users", itemRelation = "user")
+@Schema(description = "DTO with user data for response with HATEOAS links")
+public class UserResponseDTO extends RepresentationModel<UserResponseDTO> {
 
     @Schema(description = "User ID", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
     private Long id;
